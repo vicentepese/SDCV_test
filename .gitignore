@@ -5,3 +5,4 @@ data
 logs*
 vae_res*
 model*
+vae.h5
