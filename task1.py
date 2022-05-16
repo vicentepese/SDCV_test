@@ -195,6 +195,74 @@ class Ellie(pl.LightningModule):
                   prog_bar=True)
         return loss
 
+class Marci(pl.LightningModule):
+    def __init__(self, 
+                 in_features, 
+                 hidden_features, 
+                 n_classes):
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=3)
+        self.conv2 = nn.Conv2d(32, 16, kernel_size=3)
+        self.conv3 = nn.Conv2d(16, 8, kernel_size=3)
+        self.conv4 = nn.Conv2d(8, 6, kernel_size=3)
+
+        self.layer1 = nn.Linear(24*24*6, hidden_features)
+        self.layer2 = nn.Linear(hidden_features, n_classes)
+        self.activation = nn.ReLU()
+        self.loss = nn.CrossEntropyLoss()
+        self.train_accuracy = torchmetrics.Accuracy()
+        self.val_accuracy = torchmetrics.Accuracy()
+
+    def forward(self, x):
+        x_conv = self.conv1(x)
+        x_conv = self.conv2(x_conv)
+        x_conv = self.conv3(x_conv)
+        x_conv = self.conv4(x_conv)
+        
+        x_flat = torch.flatten(x_conv, start_dim=1)
+        h = self.activation(self.layer1(x_flat))
+        out = self.layer2(h)
+        return out
+    
+    def configure_optimizers(self):
+        optimizer = torch.optim.SGD(self.parameters(), lr=5e-3)
+        return optimizer
+    
+    def compute_step(self,batch):
+        imgs, labels = batch
+        # imgs = imgs.view(imgs.size(0), -1)
+        label_logits = self.forward(imgs)
+        _,label_predictions = torch.max(label_logits, dim=1 )
+        return self.loss(label_logits,labels), labels, label_predictions
+    
+    def training_step(self, train_batch, batch_idx):
+        loss, labels, label_predictions = self.compute_step(train_batch)
+        self.train_accuracy(label_predictions, labels)
+        self.log_dict({"train/loss": loss, 'train/acc' : self.train_accuracy}, 
+                  on_step=False, 
+                  on_epoch=True, 
+                  prog_bar=True)
+        return loss
+    
+    def validation_step(self, val_batch, batch_idx):
+        loss, labels, label_predictions = self.compute_step(val_batch)
+        self.val_accuracy(label_predictions, labels)
+        self.log_dict({"val/loss": loss, 'val/acc' : self.val_accuracy}, 
+                  on_step=False, 
+                  on_epoch=True, 
+                  prog_bar=True)
+        return loss
+    
+
+    def test_step(self, val_batch, batch_idx):
+        loss, labels, label_predictions = self.compute_step(val_batch)
+        self.val_accuracy(label_predictions, labels)
+        self.log_dict({"val/loss": loss, 'val/acc' : self.val_accuracy}, 
+                  on_step=False, 
+                  on_epoch=True, 
+                  prog_bar=True)
+        return loss
+
 
 def main():
     
