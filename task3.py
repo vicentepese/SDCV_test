@@ -216,21 +216,18 @@ def main():
     unlabelled_loader = DataLoader(unlabelled_data, batch_size=64, shuffle=True)
     test_loader = DataLoader(test_data, batch_size=64, shuffle=False)
     
-    # Init
-    in_features = 32*32*3
-    hidden_features = 64
-    n_classes = 10 
-    
     # Load VAE
     model = VAE(input_height=32)
 
     # Train model
     tb_logger = pl_loggers.TensorBoardLogger("./logs_task3/")
+    # callbacks=[EarlyStopping(monitor="train_kl", mode="min")]
     trainer = pl.Trainer(gpus=1,max_epochs=10,logger = tb_logger, callbacks=[EarlyStopping(monitor="train_kl", mode="min")])
     trainer.fit(model, unlabelled_loader)
     
     # Save and eval
-    torch.save(model, "./vae_resnet50_ES.h5")
+    torch.save(model.state_dict(), "./vae_resnet50_ES.h5")
+    
     # start=time.time()
     # model_acc = eval_model(model, test_loader)
     # stop=time.time()
